@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
 #include <stdbool.h>
 #include "ex3_q1_given.h"
@@ -10,19 +9,17 @@ pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 int current_index = 0;
 int num_of_files=0;
 
-void write_avg_grade(FILE *temp_file, char student_name[10], float avg_grade);
+void write_avg_grade(char student_name[10], double avg_grade);
 void calculate_grades(char students_grades_file_name[100] ,bool last);
 void* thread_function(void* arg);
 void* thread_function_last(void* arg);
+void* print_grade_thread(void* grade);
 void print_grades();
+struct student create_student(const char* name, double avg_grade);
+
 
 int main(int argc, char *argv[])
 {
-    int total_students = 0;
-    char line[100];
-    bool first_word = true;
-    char student_name[10];
-    // int pid_arr[100];
     pthread_t threads[NUM_THREADS];
     int threadArgs[NUM_THREADS];
     int num_threads = 0;
@@ -33,7 +30,7 @@ int main(int argc, char *argv[])
         threadArgs[i] = i;
         if(i==argc-1){
             ++num_threads;
-            int result = pthread_create(&threads[i], NULL, thread_function_last, fileNames[i]);
+            int result = pthread_create(&threads[i], NULL, thread_function_last, argv[i]);
             if (result != 0){
                 printf("Error creating a thread\n");
                 exit(0);
@@ -41,7 +38,7 @@ int main(int argc, char *argv[])
         }
         else{
             ++num_threads;
-            int result = pthread_create(&threads[i], NULL, thread_function, fileNames[i]);
+            int result = pthread_create(&threads[i], NULL, thread_function, argv[i]);
             if (result != 0){
                 printf("Error creating a thread\n");
                 exit(0);
@@ -60,7 +57,7 @@ int main(int argc, char *argv[])
 
     fprintf(stderr, "all %d threads terminated\n", num_threads);
 
-    print_grades()
+    print_grades();
 
     return 0;
 }
@@ -91,7 +88,7 @@ void* print_grade_thread(void* grade)
     pthread_mutex_lock(&mutex);
 
     // Print the thread's ID and the grade it's responsible for
-    printer_thread_msg(grade_letter)
+    printer_thread_msg(grade_letter);
 
     // Check if it's this thread's turn to print the grade
     while (current_index < all_stud.count)
@@ -137,10 +134,10 @@ void* print_grade_thread(void* grade)
 
 void* thread_function_last(void* arg)
 {
-char* fileName = (char*)arg;
+    char* fileName = (char*)arg;
 // Call the calculate_grades function with the given file name
-calculate_grades(fileName, true);  // Set 'last' parameter as needed
-return NULL;
+    calculate_grades(fileName, true);  // Set 'last' parameter as needed
+    return NULL;
 }
 
 void* thread_function(void* arg)
@@ -157,9 +154,9 @@ void calculate_grades(char students_grades_file_name[100], bool last) {
     bool first_word = true;
     int students = 0;
     char student_name[10];
-    float count = 0;
-    float sum = 0;
-    float avg_grade;
+    double count = 0;
+    double sum = 0;
+    double avg_grade;
     grade_file = fopen(students_grades_file_name, "r"); // open the file for reading
 
     if (grade_file == NULL) { // check if the file was opened successfully
@@ -200,10 +197,19 @@ void calculate_grades(char students_grades_file_name[100], bool last) {
     exit(0);
 }
 
+struct student create_student(const char* name, double avg_grade)
+{
+    struct student new_student;
+    strncpy(new_student.name, name, MAX_NAME_LEN);
+    new_student.name[MAX_NAME_LEN] = '\0'; // Ensure null-terminated string
+    new_student.avg_grade = avg_grade;
 
-void write_avg_grade(char student_name[10], float avg_grade) {
-    struct student student = {student_name, avg_grade};
-    add_to_student_arr(&student);
+    return new_student;
+}
+
+void write_avg_grade(char student_name[10], double avg_grade) {
+    struct student new_student = create_student(student_name, avg_grade);
+    add_to_student_arr(&new_student);
 }
 
 
