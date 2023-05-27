@@ -10,7 +10,7 @@ PROG = ex3_q1
 
 all: $(PROG) test
 
-$(PROG): ex3_q1.c ex3_q1.h ../../Downloads/ex3_given/ex3_q1_given.h ex3_q1_given.c
+$(PROG): ex3_q1.c ex3_q1_given.h ex3_q1_given.c
 	$(ECHO)
 	gcc ex3_q1.c ex3_q1_given.c $(CFLAGS) $(LDFLAGS) -o $@
 
