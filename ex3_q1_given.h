@@ -7,14 +7,21 @@
 // vars
 #define NUM_THREADS 100
 struct all_students all_stud;
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex2;
+pthread_t threads[NUM_THREADS];
+pthread_mutex_t mutex;
 int current_index = 0;
 int num_of_files = 0;
 
+
 // functions
+void initializeMutexes();
+
+char get_character_from_grade(double grade);
+
 void write_avg_grade(char student_name[10], double avg_grade);
 
-void calculate_grades(char students_grades_file_name[100], bool last);
+void calculate_grades(char students_grades_file_name[100]);
 
 void *thread_function(void *arg);
 
@@ -30,6 +37,8 @@ void calculate_students_grades_by_thread(int number_of_files, char *files_names[
 
 // main
 int main(int argc, char *argv[]) {
+    initializeMutexes();
+
     calculate_students_grades_by_thread(argc, argv);
 
     print_grades_by_thread();
@@ -37,9 +46,14 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
+void initializeMutexes() {
+    // Initialize the mutexes
+    pthread_mutex_init(&mutex, NULL);
+    pthread_mutex_init(&mutex2, NULL);
+}
+
 
 void calculate_students_grades_by_thread(int number_of_files, char *files_names[]) {
-    pthread_t threads[NUM_THREADS];
     int threadArgs[NUM_THREADS];
     int num_threads = 0;
     int i;
@@ -65,7 +79,7 @@ void calculate_students_grades_by_thread(int number_of_files, char *files_names[
     }
 
     // Wait for all threads to finish
-    for (i = 0; i < number_of_files; ++i) {
+    for (i = 1; i < number_of_files; ++i) {
         int joinResult = pthread_join(threads[i], NULL);
         if (joinResult != 0) {
             printf("Error - pthread_join fails\n");
@@ -93,31 +107,32 @@ void print_grades_by_thread() {
 void *print_grade_thread(void *grade) {
     char grade_letter = *(char *) grade;
 
-    // Lock the mutex to ensure synchronization
-    pthread_mutex_lock(&mutex);
-
-    // Print the thread's ID and the grade it's responsible for
     printer_thread_msg(grade_letter);
 
-    // Check if it's this thread's turn to print the grade
+
     while (current_index < all_stud.count) {
         // Check if the grade matches the current index
-        if (grade_letter == all_stud.stud_arr[current_index].avg_grade) {
-            // Call the appropriate print_grade_X function
+        char grade_character = get_character_from_grade(all_stud.stud_arr[current_index].avg_grade);
+        if (grade_letter == grade_character) {
             switch (grade_letter) {
                 case 'A':
+                    pthread_mutex_lock(&mutex);
                     print_grade_A(current_index);
                     break;
                 case 'B':
+                    pthread_mutex_lock(&mutex);
                     print_grade_B(current_index);
                     break;
                 case 'C':
+                    pthread_mutex_lock(&mutex);
                     print_grade_C(current_index);
                     break;
                 case 'D':
+                    pthread_mutex_lock(&mutex);
                     print_grade_D(current_index);
                     break;
                 case 'F':
+                    pthread_mutex_lock(&mutex);
                     print_grade_F(current_index);
                     break;
                 default:
@@ -127,14 +142,9 @@ void *print_grade_thread(void *grade) {
 
             // Increment the current index
             current_index++;
-
-            // Break the loop to allow other threads to check their grades
-            break;
+            pthread_mutex_unlock(&mutex);
         }
     }
-
-    // Unlock the mutex
-    pthread_mutex_unlock(&mutex);
 
     // Exit the thread
     pthread_exit(NULL);
@@ -143,19 +153,23 @@ void *print_grade_thread(void *grade) {
 
 void *thread_function_last(void *arg) {
     char *fileName = (char *) arg;
-// Call the calculate_grades function with the given file name
-    calculate_grades(fileName, true);  // Set 'last' parameter as needed
+    // Call the calculate_grades function with the given file name
+    calculate_grades(fileName);
+
+    sleep(2);
+    print_student_arr();
     return NULL;
 }
 
 void *thread_function(void *arg) {
     char *fileName = (char *) arg;
     // Call the calculate_grades function with the given file name
-    calculate_grades(fileName, false);  // Set 'last' parameter as needed
+    calculate_grades(fileName);
+
     return NULL;
 }
 
-void calculate_grades(char students_grades_file_name[100], bool last) {
+void calculate_grades(char students_grades_file_name[100]) {
     FILE *grade_file;
     char line[100];
     bool first_word = true;
@@ -164,6 +178,7 @@ void calculate_grades(char students_grades_file_name[100], bool last) {
     double count = 0;
     double sum = 0;
     double avg_grade;
+
     grade_file = fopen(students_grades_file_name, "r"); // open the file for reading
 
     if (grade_file == NULL) { // check if the file was opened successfully
@@ -197,11 +212,6 @@ void calculate_grades(char students_grades_file_name[100], bool last) {
 
 
     fclose(grade_file); // close the file
-
-    if (last) {
-        print_student_arr();
-    }
-    exit(0);
 }
 
 struct student create_student(const char *name, double avg_grade) {
@@ -214,8 +224,29 @@ struct student create_student(const char *name, double avg_grade) {
 }
 
 void write_avg_grade(char student_name[10], double avg_grade) {
+    // Lock the mutex to ensure synchronization
+    pthread_mutex_lock(&mutex2);
+
     struct student new_student = create_student(student_name, avg_grade);
     add_to_student_arr(&new_student);
+
+    // Unlock the mutex
+    pthread_mutex_unlock(&mutex2);
 }
 
+char get_character_from_grade(double grade) {
+    if (grade >= 90 && grade <= 100) {
+        return 'A';
+    } else if (grade >= 80 && grade < 90) {
+        return 'B';
+    } else if (grade >= 70 && grade < 80) {
+        return 'C';
+    } else if (grade >= 60 && grade < 70) {
+        return 'D';
+    } else if (grade >= 0 && grade < 60) {
+        return 'F';
+    } else {
+        return 'X'; // Invalid grade
+    }
+}
 
