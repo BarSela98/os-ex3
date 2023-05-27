@@ -3,43 +3,61 @@
 #include <string.h>
 #include <stdbool.h>
 #include "ex3_q1_given.h"
+
+// vars
 #define NUM_THREADS 100
 struct all_students all_stud;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 int current_index = 0;
-int num_of_files=0;
+int num_of_files = 0;
 
+// functions
 void write_avg_grade(char student_name[10], double avg_grade);
-void calculate_grades(char students_grades_file_name[100] ,bool last);
-void* thread_function(void* arg);
-void* thread_function_last(void* arg);
-void* print_grade_thread(void* grade);
-void print_grades();
-struct student create_student(const char* name, double avg_grade);
+
+void calculate_grades(char students_grades_file_name[100], bool last);
+
+void *thread_function(void *arg);
+
+void *thread_function_last(void *arg);
+
+void *print_grade_thread(void *grade);
+
+void print_grades_by_thread();
+
+struct student create_student(const char *name, double avg_grade);
+
+void calculate_students_grades_by_thread();
+
+// main
+int main(int argc, char *argv[]) {
+    calculate_students_grades_by_thread()
+
+    print_grades_by_thread();
+
+    return 0;
+}
 
 
-int main(int argc, char *argv[])
-{
+void calculate_students_grades_by_thread() {
     pthread_t threads[NUM_THREADS];
     int threadArgs[NUM_THREADS];
     int num_threads = 0;
     int i;
-    for(i=1;i<argc;++i){
+    for (i = 1; i < argc; ++i) {
         num_of_files++;
 
         threadArgs[i] = i;
-        if(i==argc-1){
+        if (i == argc - 1) {
             ++num_threads;
             int result = pthread_create(&threads[i], NULL, thread_function_last, argv[i]);
-            if (result != 0){
+            if (result != 0) {
                 printf("Error creating a thread\n");
                 exit(0);
             }
-        }
-        else{
+        } else {
             ++num_threads;
             int result = pthread_create(&threads[i], NULL, thread_function, argv[i]);
-            if (result != 0){
+            if (result != 0) {
                 printf("Error creating a thread\n");
                 exit(0);
             }
@@ -47,7 +65,7 @@ int main(int argc, char *argv[])
     }
 
     // Wait for all threads to finish
-    for(i=1;i<argc;++i) {
+    for (i = 1; i < argc; ++i) {
         int joinResult = pthread_join(threads[i], NULL);
         if (joinResult != 0) {
             printf("Error - pthread_join fails\n");
@@ -56,33 +74,24 @@ int main(int argc, char *argv[])
     }
 
     fprintf(stderr, "all %d threads terminated\n", num_threads);
-
-    print_grades();
-
-    return 0;
 }
 
-void print_grades(){
+void print_grades_by_thread() {
     pthread_t finish_threads[5];
     char grades[] = {'A', 'B', 'C', 'D', 'F'};
 
     for (int i = 0; i < 5; i++)
-    {
         pthread_create(&finish_threads[i], NULL, print_grade_thread, &grades[i]);
-    }
 
     // Wait for all threads to finish
     for (int i = 0; i < 5; i++)
-    {
         pthread_join(finish_threads[i], NULL);
-    }
 
     fprintf(stderr, "all printer-threads terminated\n");
 }
 
-void* print_grade_thread(void* grade)
-{
-    char grade_letter = *(char*)grade;
+void *print_grade_thread(void *grade) {
+    char grade_letter = *(char *) grade;
 
     // Lock the mutex to ensure synchronization
     pthread_mutex_lock(&mutex);
@@ -91,14 +100,11 @@ void* print_grade_thread(void* grade)
     printer_thread_msg(grade_letter);
 
     // Check if it's this thread's turn to print the grade
-    while (current_index < all_stud.count)
-    {
+    while (current_index < all_stud.count) {
         // Check if the grade matches the current index
-        if (grade_letter == all_stud.stud_arr[current_index].avg_grade)
-        {
+        if (grade_letter == all_stud.stud_arr[current_index].avg_grade) {
             // Call the appropriate print_grade_X function
-            switch (grade_letter)
-            {
+            switch (grade_letter) {
                 case 'A':
                     print_grade_A(current_index);
                     break;
@@ -132,17 +138,15 @@ void* print_grade_thread(void* grade)
 }
 
 
-void* thread_function_last(void* arg)
-{
-    char* fileName = (char*)arg;
+void *thread_function_last(void *arg) {
+    char *fileName = (char *) arg;
 // Call the calculate_grades function with the given file name
     calculate_grades(fileName, true);  // Set 'last' parameter as needed
     return NULL;
 }
 
-void* thread_function(void* arg)
-{
-    char* fileName = (char*)arg;
+void *thread_function(void *arg) {
+    char *fileName = (char *) arg;
     // Call the calculate_grades function with the given file name
     calculate_grades(fileName, false);  // Set 'last' parameter as needed
     return NULL;
@@ -191,14 +195,13 @@ void calculate_grades(char students_grades_file_name[100], bool last) {
 
     fclose(grade_file); // close the file
 
-    if(last){
+    if (last) {
         print_student_arr();
     }
     exit(0);
 }
 
-struct student create_student(const char* name, double avg_grade)
-{
+struct student create_student(const char *name, double avg_grade) {
     struct student new_student;
     strncpy(new_student.name, name, MAX_NAME_LEN);
     new_student.name[MAX_NAME_LEN] = '\0'; // Ensure null-terminated string
